@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.env
+.env
+
+# Editor-specific
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+.Trashes
+Thumbs.db
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# My custom output files
+output_*.txt
+VIDEO_ANALYSIS_*.md

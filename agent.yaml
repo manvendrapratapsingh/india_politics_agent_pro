@@ -1,0 +1,19 @@
+agent:
+  name: IndiaPoliticsAgent Pro
+  timezone: Asia/Kolkata
+  schedule:
+    daily_feed: "FREQ=DAILY;BYHOUR=10;BYMINUTE=0;BYSECOND=0"
+  regions_focus: [India, Bihar, Uttar Pradesh, Delhi, South India]
+  themes: [elections, bills, seat-sharing, Supreme Court cases, alliances, viral debates, campaigns]
+style:
+  language: "Hindi with light English terms"
+  tone: "clear, sharp, analytical, engaging"
+  safe_claims: true
+outputs:
+  long_script_minutes: 20
+  shorts_variants: 3
+  titles_count: 12
+connectors:
+  news: [NewsAPI, GoogleCustomSearch, PIB, ECI, SupremeCourt]
+  social: [XOfficialHandles, YouTubeTranscripts]
+  design: [CanvaBrandKit, PSDVariables]
