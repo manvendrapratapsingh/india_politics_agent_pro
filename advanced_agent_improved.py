@@ -33,33 +33,155 @@ class ImprovedPoliticalAgent:
         genai.configure(api_key=gemini_api_key)
         self.searcher = WebSearcher()
 
+    def generate_smart_queries(self, topic: str) -> List[str]:
+        """Generate multiple smart search queries for better coverage"""
+        from datetime import datetime
+
+        current_date = datetime.now()
+        current_year = current_date.year
+        current_month = current_date.strftime("%B")
+
+        queries = [
+            # Main query with temporal context
+            f"{topic} latest news {current_month} {current_year}",
+
+            # Query with India context
+            f"{topic} India politics {current_year}",
+
+            # Query with "breaking" and "update"
+            f"{topic} latest update breaking news",
+
+            # Query with temporal markers
+            f"{topic} today yesterday recent developments",
+
+            # Query for specific Indian sources
+            f"{topic} site:thehindu.com OR site:indianexpress.com OR site:ndtv.com OR site:hindustantimes.com {current_year}",
+        ]
+
+        return queries
+
+    def search_with_gemini_grounding(self, topic: str) -> str:
+        """Use Gemini with web context (searches via its built-in knowledge)"""
+        print("🌐 Using Gemini to search for latest information...")
+
+        try:
+            from datetime import datetime
+
+            # Use Gemini 2.0 Flash - it has more up-to-date knowledge
+            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+
+            search_prompt = f"""You are tasked with finding and reporting the LATEST information about: {topic}
+
+IMPORTANT CONTEXT:
+- Today's date is: {datetime.now().strftime("%Y-%m-%d")} ({datetime.now().strftime("%B %d, %Y")})
+- Focus on events from the LAST 7 DAYS
+- This is about Bihar, India politics
+
+YOUR TASK:
+Search your knowledge for the most recent information and provide:
+
+1. **Latest News Headlines** (from past week if possible):
+   - What happened?
+   - When exactly?
+   - Key players involved?
+
+2. **Specific Facts with Dates**:
+   - Recent political events
+   - Campaign activities
+   - Statements/announcements
+   - Electoral developments
+
+3. **Numbers & Statistics** (if available):
+   - Polling dates
+   - Constituency details
+   - Voter statistics
+   - Survey numbers
+
+4. **Key Quotes** (if you have them):
+   - From politicians
+   - From election officials
+   - From party leaders
+
+5. **Context**:
+   - Why is this significant?
+   - What are the stakes?
+   - Historical context
+
+**BE AS SPECIFIC AS POSSIBLE** with dates, names, places, and numbers.
+If you don't have very recent information, clearly state what timeframe your information is from.
+
+RESPOND WITH DETAILED, FACTUAL INFORMATION."""
+
+            response = model.generate_content(
+                search_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=4000,
+                ),
+                safety_settings=[
+                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                ]
+            )
+
+            if response.text:
+                print("✅ Successfully retrieved information via Gemini\n")
+                return response.text
+            else:
+                print("⚠️ Gemini returned empty response\n")
+                return ""
+
+        except Exception as e:
+            print(f"⚠️ Gemini search failed: {e}\n")
+            return ""
+
     def get_latest_context(self, topic: str) -> Dict:
-        """Get latest context from web search"""
+        """Get latest context from web search with smart query generation"""
         print(f"\n{'='*70}")
         print("STEP 1: Fetching Latest Information from Web")
         print(f"{'='*70}\n")
 
-        # Perform comprehensive web search
-        search_query = f"{topic} India politics latest news 2024 2025"
-        results = self.searcher.search_comprehensive(search_query)
+        # APPROACH 1: Try traditional web scraping first
+        queries = self.generate_smart_queries(topic)
+        primary_query = queries[0]
+        print(f"🎯 Primary query: {primary_query}\n")
+        results = self.searcher.search_comprehensive(primary_query)
+
+        # APPROACH 2: If web scraping fails, use Gemini's built-in web search
+        if not results or len(results) < 3:
+            print("⚠️ Traditional web search returned insufficient results.")
+            print("🔄 Switching to Gemini's Google Search grounding...\n")
+
+            gemini_search_results = self.search_with_gemini_grounding(topic)
+
+            if gemini_search_results:
+                return {
+                    'raw_results': [],
+                    'formatted_text': gemini_search_results,
+                    'source_count': 1,
+                    'method': 'gemini_grounding'
+                }
 
         if not results:
-            print("⚠️ No web results found. Will use Gemini's knowledge base.")
+            print("⚠️ All search methods failed. Using Gemini's knowledge base.")
             return {
                 'raw_results': [],
                 'formatted_text': "No recent web data available. Using Gemini's knowledge base.",
-                'source_count': 0
+                'source_count': 0,
+                'method': 'knowledge_base'
             }
 
-        # Save raw results
+        # Traditional scraping succeeded
         formatted_text = self.searcher.format_results(results)
-
-        print(f"✅ Successfully collected {len(results)} articles/sources")
+        print(f"✅ Successfully collected {len(results)} articles/sources\n")
 
         return {
             'raw_results': results,
             'formatted_text': formatted_text,
-            'source_count': len(results)
+            'source_count': len(results),
+            'method': 'web_scraping'
         }
 
     def extract_key_facts(self, context: Dict, topic: str) -> Dict:
@@ -68,12 +190,10 @@ class ImprovedPoliticalAgent:
         print("STEP 2: Extracting Key Facts and Data Points")
         print(f"{'='*70}\n")
 
-        if context['source_count'] == 0:
+        if context['source_count'] == 0 or not context.get('formatted_text'):
             return {
-                'facts': [],
-                'dates': [],
-                'key_players': [],
-                'numbers': []
+                'extracted_facts': "No web data available for fact extraction.",
+                'raw_context': ""
             }
 
         # Use Gemini to extract structured data from search results
@@ -150,13 +270,16 @@ Be concise. Focus on facts, not opinions. Use ONLY information from the provided
         print("STEP 3: Creating Comprehensive Video Analysis")
         print(f"{'='*70}\n")
 
+        # Get extracted facts, with fallback
+        extracted_facts = facts.get('extracted_facts', 'No structured facts extracted.')
+
         # Shorter, more focused prompt with extracted facts
         prompt = f"""You are India's TOP political analyst creating a YouTube video analysis for: {topic}
 
 CONTEXT YEAR: 2025
 
 EXTRACTED FACTS & LATEST INFORMATION:
-{facts['extracted_facts']}
+{extracted_facts}
 
 CRITICAL INSTRUCTIONS:
 1. **BE DATA-DRIVEN**: Use ONLY the facts provided above. Include specific dates, names, numbers, quotes.
@@ -507,7 +630,8 @@ def main():
         print(analysis)
 
         # Save
-        facts_summary = f"Sources analyzed: {context['source_count']}\nData extraction completed successfully."
+        search_method = context.get('method', 'unknown')
+        facts_summary = f"Search Method: {search_method}\nSources analyzed: {context['source_count']}\nData extraction completed successfully."
         filename = agent.save_analysis(analysis, topic, facts_summary)
 
         print("\n" + "="*70)
