@@ -64,13 +64,17 @@ class ImprovedPoliticalAgent:
         """Use Gemini with web context (searches via its built-in knowledge)"""
         print("🌐 Using Gemini to search for latest information...")
 
-        try:
-            from datetime import datetime
+        from datetime import datetime
 
-            # Use Gemini 2.0 Flash - it has more up-to-date knowledge
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        # Try multiple models with fallback
+        models_to_try = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest']
 
-            search_prompt = f"""You are tasked with finding and reporting the LATEST information about: {topic}
+        for model_name in models_to_try:
+            try:
+                print(f"⏳ Trying {model_name}...")
+                model = genai.GenerativeModel(model_name)
+
+                search_prompt = f"""You are tasked with finding and reporting the LATEST information about: {topic}
 
 IMPORTANT CONTEXT:
 - Today's date is: {datetime.now().strftime("%Y-%m-%d")} ({datetime.now().strftime("%B %d, %Y")})
@@ -112,30 +116,41 @@ If you don't have very recent information, clearly state what timeframe your inf
 
 RESPOND WITH DETAILED, FACTUAL INFORMATION."""
 
-            response = model.generate_content(
-                search_prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=4000,
-                ),
-                safety_settings=[
-                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-                ]
-            )
+                response = model.generate_content(
+                    search_prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.3,
+                        max_output_tokens=4000,
+                    ),
+                    safety_settings=[
+                        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                    ]
+                )
 
-            if response.text:
-                print("✅ Successfully retrieved information via Gemini\n")
-                return response.text
-            else:
-                print("⚠️ Gemini returned empty response\n")
-                return ""
+                if response.text:
+                    print(f"✅ Successfully retrieved information via {model_name}\n")
+                    return response.text
+                else:
+                    print(f"⚠️ {model_name} returned empty response, trying next model...\n")
 
-        except Exception as e:
-            print(f"⚠️ Gemini search failed: {e}\n")
-            return ""
+            except Exception as e:
+                error_msg = str(e).lower()
+                if 'resource_exhausted' in error_msg or 'quota' in error_msg or '429' in error_msg:
+                    print(f"⚠️ {model_name}: API quota exhausted. Trying next model...\n")
+                elif '404' in error_msg or 'not found' in error_msg:
+                    print(f"⚠️ {model_name}: Model not found. Trying next model...\n")
+                else:
+                    print(f"⚠️ {model_name} failed: {e}. Trying next model...\n")
+
+                if model_name == models_to_try[-1]:
+                    print(f"❌ All Gemini models failed\n")
+                    return ""
+                continue
+
+        return ""
 
     def get_latest_context(self, topic: str) -> Dict:
         """Get latest context from web search with smart query generation"""
@@ -197,10 +212,14 @@ RESPOND WITH DETAILED, FACTUAL INFORMATION."""
             }
 
         # Use Gemini to extract structured data from search results
-        try:
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        # Try multiple models with fallback
+        models_to_try = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest']
 
-            extraction_prompt = f"""Analyze the following news articles and extract ONLY factual information about: {topic}
+        for model_name in models_to_try:
+            try:
+                model = genai.GenerativeModel(model_name)
+
+                extraction_prompt = f"""Analyze the following news articles and extract ONLY factual information about: {topic}
 
 WEB SEARCH RESULTS:
 {context['formatted_text'][:15000]}  # Limit context to avoid token limits
@@ -232,36 +251,47 @@ YOUR TASK: Extract and list:
 
 Be concise. Focus on facts, not opinions. Use ONLY information from the provided articles."""
 
-            print("⏳ Extracting facts with Gemini Flash... (30-40 seconds)\n")
+                print(f"⏳ Extracting facts with {model_name}... (30-40 seconds)\n")
 
-            response = model.generate_content(
-                extraction_prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,  # Lower temperature for factual extraction
-                    max_output_tokens=2000,
-                ),
-                safety_settings=[
-                    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-                ]
-            )
+                response = model.generate_content(
+                    extraction_prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.3,  # Lower temperature for factual extraction
+                        max_output_tokens=2000,
+                    ),
+                    safety_settings=[
+                        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                    ]
+                )
 
-            extracted_facts = response.text
-            print("✅ Facts extracted successfully")
+                if response.text:
+                    extracted_facts = response.text
+                    print(f"✅ Facts extracted successfully with {model_name}\n")
 
-            return {
-                'extracted_facts': extracted_facts,
-                'raw_context': context['formatted_text']
-            }
+                    return {
+                        'extracted_facts': extracted_facts,
+                        'raw_context': context['formatted_text']
+                    }
 
-        except Exception as e:
-            print(f"⚠️ Fact extraction failed: {e}")
-            return {
-                'extracted_facts': "Fact extraction failed. Using raw context.",
-                'raw_context': context['formatted_text']
-            }
+            except Exception as e:
+                error_msg = str(e).lower()
+                if 'resource_exhausted' in error_msg or 'quota' in error_msg or '429' in error_msg:
+                    print(f"⚠️ {model_name}: API quota exhausted. Trying next model...")
+                elif '404' in error_msg or 'not found' in error_msg:
+                    print(f"⚠️ {model_name}: Model not found. Trying next model...")
+                else:
+                    print(f"⚠️ {model_name} failed: {e}. Trying next model...")
+
+                if model_name == models_to_try[-1]:
+                    print(f"❌ All models failed for fact extraction")
+                    return {
+                        'extracted_facts': "Fact extraction failed. Using raw context.",
+                        'raw_context': context['formatted_text']
+                    }
+                continue
 
     def create_video_analysis(self, topic: str, facts: Dict) -> str:
         """Create comprehensive video-ready analysis using extracted facts"""
@@ -501,8 +531,8 @@ Remember: Be SPECIFIC, use FACTS, include DATES and NUMBERS, write in ENGAGING H
         # Try multiple models in order of preference
         models_to_try = [
             ('gemini-2.0-flash-exp', 8000),
-            ('gemini-1.5-flash', 8000),
-            ('gemini-1.5-pro', 8000)
+            ('gemini-1.5-flash-latest', 8000),
+            ('gemini-1.5-pro-latest', 8000)
         ]
 
         for model_name, max_tokens in models_to_try:
