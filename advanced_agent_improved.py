@@ -67,8 +67,7 @@ class ImprovedPoliticalAgent:
         from datetime import datetime
 
         # Try multiple models with fallback
-        models_to_try = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest']
-
+        models_to_try = ['gemini-2.0-flash-exp', 'gemini-flash-latest', 'gemini-pro-latest']
         for model_name in models_to_try:
             try:
                 print(f"⏳ Trying {model_name}...")
@@ -213,7 +212,7 @@ RESPOND WITH DETAILED, FACTUAL INFORMATION."""
 
         # Use Gemini to extract structured data from search results
         # Try multiple models with fallback
-        models_to_try = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest']
+        models_to_try = ['gemini-2.0-flash-exp', 'gemini-flash-latest', 'gemini-pro-latest']
 
         for model_name in models_to_try:
             try:
@@ -531,8 +530,8 @@ Remember: Be SPECIFIC, use FACTS, include DATES and NUMBERS, write in ENGAGING H
         # Try multiple models in order of preference
         models_to_try = [
             ('gemini-2.0-flash-exp', 8000),
-            ('gemini-1.5-flash-latest', 8000),
-            ('gemini-1.5-pro-latest', 8000)
+            ('gemini-flash-latest', 8000),
+            ('gemini-pro-latest', 8000)
         ]
 
         for model_name, max_tokens in models_to_try:
