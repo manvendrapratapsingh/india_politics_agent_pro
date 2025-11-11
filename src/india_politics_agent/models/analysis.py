@@ -1,0 +1,242 @@
+"""Analysis result models."""
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import List, Dict, Optional
+from enum import Enum
+
+
+class AnalysisStatus(Enum):
+    """Status of analysis generation."""
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@dataclass
+class VideoScript:
+    """Main video script structure."""
+    hook: str
+    latest_developments: str
+    electoral_mathematics: str
+    campaign_strategy: str
+    historical_context: str
+    key_players: str
+    future_implications: str
+    conclusion: str
+    estimated_duration_minutes: int = 20
+
+    def to_markdown(self) -> str:
+        """Convert to markdown format."""
+        return f"""## 🎬 MAIN VIDEO SCRIPT ({self.estimated_duration_minutes} Minutes)
+
+### 🎯 HOOK [0:00 - 0:45]
+{self.hook}
+
+### 📰 LATEST DEVELOPMENTS [0:45 - 3:00]
+{self.latest_developments}
+
+### 🗳️ ELECTORAL MATHEMATICS [3:00 - 6:00]
+{self.electoral_mathematics}
+
+### 🎯 CAMPAIGN STRATEGY [6:00 - 10:00]
+{self.campaign_strategy}
+
+### 📚 HISTORICAL CONTEXT [10:00 - 12:00]
+{self.historical_context}
+
+### 👥 KEY PLAYERS [12:00 - 15:00]
+{self.key_players}
+
+### 🔮 FUTURE IMPLICATIONS [15:00 - 17:30]
+{self.future_implications}
+
+### 🎓 CONCLUSION [17:30 - 20:00]
+{self.conclusion}
+"""
+
+
+@dataclass
+class YouTubeShort:
+    """YouTube Short video script."""
+    title: str
+    script: str
+    duration_seconds: int = 60
+    focus: str = ""  # "controversial", "data", "analytical"
+
+    def to_markdown(self) -> str:
+        """Convert to markdown format."""
+        return f"""### {self.title}
+**Focus:** {self.focus}
+**Duration:** {self.duration_seconds}s
+
+{self.script}
+"""
+
+
+@dataclass
+class ThumbnailConcept:
+    """Thumbnail design concept."""
+    title: str
+    central_image_description: str
+    text_overlay: str
+    color_scheme: List[str]
+    style_notes: str
+
+
+@dataclass
+class SEOPackage:
+    """Complete SEO metadata package."""
+    description: str
+    tags: List[str]
+    hashtags: List[str]
+    timestamps: Dict[str, str]
+    titles: List[str]
+
+
+@dataclass
+class AnalysisResult:
+    """Complete analysis result with all components."""
+
+    # Core content
+    topic: str
+    executive_summary: str
+    video_script: VideoScript
+    shorts: List[YouTubeShort]
+
+    # Metadata
+    status: AnalysisStatus
+    generated_at: datetime
+    generation_time_seconds: float
+
+    # SEO and visuals
+    seo_package: SEOPackage
+    thumbnail_concepts: List[ThumbnailConcept]
+
+    # Sources and verification
+    sources: List[Dict[str, str]]
+    facts_extracted: List[str]
+    verification_notes: str
+
+    # Metrics
+    word_count: int
+    sources_count: int
+    model_used: str
+    cache_hit: bool = False
+
+    # Optional fields
+    error_message: Optional[str] = None
+    warnings: List[str] = field(default_factory=list)
+
+    def to_markdown(self) -> str:
+        """Convert complete analysis to markdown."""
+        md = f"""# 🇮🇳 INDIA POLITICS PRO - COMPREHENSIVE ANALYSIS
+
+**Topic:** {self.topic}
+**Generated:** {self.generated_at.strftime('%Y-%m-%d %H:%M:%S IST')}
+**Generation Time:** {self.generation_time_seconds:.2f}s
+**Model:** {self.model_used}
+**Status:** {self.status.value}
+**Sources:** {self.sources_count}
+**Words:** {self.word_count:,}
+
+---
+
+## 📊 EXECUTIVE SUMMARY
+
+{self.executive_summary}
+
+---
+
+{self.video_script.to_markdown()}
+
+---
+
+## 📱 YOUTUBE SHORTS
+
+"""
+        for short in self.shorts:
+            md += short.to_markdown() + "\n"
+
+        md += f"""
+---
+
+## 📺 TITLE OPTIONS
+
+"""
+        for i, title in enumerate(self.seo_package.titles, 1):
+            md += f"{i}. {title}\n"
+
+        md += f"""
+---
+
+## 🖼️ THUMBNAIL CONCEPTS
+
+"""
+        for i, concept in enumerate(self.thumbnail_concepts, 1):
+            md += f"""
+### Concept {i}: {concept.title}
+- **Central Image:** {concept.central_image_description}
+- **Text Overlay:** {concept.text_overlay}
+- **Colors:** {', '.join(concept.color_scheme)}
+- **Style:** {concept.style_notes}
+"""
+
+        md += f"""
+---
+
+## 🔍 SEO PACKAGE
+
+### Description
+{self.seo_package.description}
+
+### Tags
+{', '.join(self.seo_package.tags)}
+
+### Hashtags
+{' '.join(self.seo_package.hashtags)}
+
+### Timestamps
+"""
+        for time, label in self.seo_package.timestamps.items():
+            md += f"- {time} - {label}\n"
+
+        md += f"""
+---
+
+## 📚 SOURCES & VERIFICATION
+
+### Key Facts Extracted:
+"""
+        for fact in self.facts_extracted[:10]:  # Top 10 facts
+            md += f"- {fact}\n"
+
+        md += f"""
+### Sources ({self.sources_count} total):
+"""
+        for source in self.sources[:10]:  # Top 10 sources
+            md += f"- **{source.get('title', 'N/A')}** - {source.get('source', 'Unknown')} ({source.get('date', 'No date')})\n"
+
+        md += f"""
+### Verification
+{self.verification_notes}
+
+---
+
+*Generated by India Politics Agent Pro v2.0 - Production Grade*
+*Cache Hit: {'Yes' if self.cache_hit else 'No'}*
+"""
+
+        if self.warnings:
+            md += f"\n### ⚠️ Warnings:\n"
+            for warning in self.warnings:
+                md += f"- {warning}\n"
+
+        return md
+
+    def save(self, filepath: str) -> str:
+        """Save analysis to file."""
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(self.to_markdown())
+        return filepath
