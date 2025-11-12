@@ -100,8 +100,8 @@ class MemoryCache(CacheBackend):
             try:
                 size = len(pickle.dumps(self.cache[key]))
                 self.current_size -= size
-            except:
-                pass
+            except (KeyError, TypeError, pickle.PickleError) as e:
+                logger.warning(f"Error calculating cache size during deletion: {e}")
             del self.cache[key]
         if key in self.expiry:
             del self.expiry[key]
@@ -143,7 +143,7 @@ class RedisCache(CacheBackend):
             data = self.client.get(self._make_key(key))
             if data is None:
                 return None
-            return pickle.loads(data)
+            return json.loads(data.decode('utf-8'))
         except Exception as e:
             logger.warning(f"Redis get failed for key={key}: {e}")
             return None
@@ -151,7 +151,7 @@ class RedisCache(CacheBackend):
     def set(self, key: str, value: Any, ttl: int = 3600):
         """Set value in cache."""
         try:
-            data = pickle.dumps(value)
+            data = json.dumps(value).encode('utf-8')
             self.client.setex(self._make_key(key), ttl, data)
             logger.debug(f"Redis cached key={key}, ttl={ttl}s")
         except Exception as e:

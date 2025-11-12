@@ -204,7 +204,14 @@ class AgentConfig:
         return errors
 
     def __post_init__(self):
-        """Post-initialization setup."""
+        """Post-initialization setup and validation."""
         # Create directories
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Validate configuration
+        errors = self.validate()
+        if errors:
+            from ..utils.errors import ConfigurationError
+            error_msg = "Configuration validation failed:\n" + "\n".join(f"  - {err}" for err in errors)
+            raise ConfigurationError(error_msg, details={'errors': errors})

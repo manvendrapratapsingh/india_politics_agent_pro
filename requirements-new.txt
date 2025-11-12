@@ -1,50 +1,55 @@
 # Core dependencies
-google-generativeai>=0.3.0
-pyyaml>=6.0
-python-dotenv>=1.0.0
-pydantic>=2.0.0
+google-generativeai==0.8.3
+pyyaml==6.0.1
+python-dotenv==1.0.1
+pydantic==2.9.2
 
 # Async and HTTP
-aiohttp>=3.9.0
-httpx>=0.25.0
-asyncio>=3.4.3
+aiohttp==3.10.10
+httpx==0.27.2
+# asyncio is part of standard library, no separate package needed
 
 # Web scraping
-beautifulsoup4>=4.12.0
-lxml>=4.9.0
-html5lib>=1.1
+beautifulsoup4==4.12.3
+lxml==5.3.0
+html5lib==1.1
 
 # Caching
-redis>=5.0.0
-hiredis>=2.2.0
+redis==5.2.0
+hiredis==3.0.0
 
 # Logging and monitoring
-loguru>=0.7.0
-prometheus-client>=0.19.0
+loguru==0.7.3
+prometheus-client==0.21.0
 
 # CLI and UI
-rich>=13.7.0
-click>=8.1.0
-typer>=0.9.0
+rich==13.9.4
+click==8.1.7
+typer==0.15.1
 
 # Rate limiting
-aiolimiter>=1.1.0
-tenacity>=8.2.0
+aiolimiter==1.2.1
+tenacity==9.0.0
 
 # Testing
-pytest>=7.4.0
-pytest-asyncio>=0.21.0
-pytest-cov>=4.1.0
-pytest-mock>=3.12.0
-httpx-mock>=0.12.0
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+pytest-mock==3.14.0
+httpx-mock==0.13.0
 
 # Code quality
-black>=23.12.0
-flake8>=6.1.0
-mypy>=1.7.0
-isort>=5.13.0
-pre-commit>=3.6.0
+black==24.10.0
+flake8==7.1.1
+mypy==1.13.0
+isort==5.13.2
+pre-commit==4.0.1
 
 # Development
-ipython>=8.18.0
-ipdb>=0.13.13
+ipython==8.30.0
+ipdb==0.13.13
+
+# Additional required dependencies
+requests==2.32.3
+certifi==2024.8.30
+urllib3==2.2.3

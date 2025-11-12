@@ -9,7 +9,15 @@ from ..services.web_search_service import WebSearchService
 from ..services.gemini_service import GeminiService
 from ..models.analysis import AnalysisResult, AnalysisStatus, VideoScript, YouTubeShort, SEOPackage, ThumbnailConcept
 from ..utils.logging import get_logger
-from ..utils.errors import AnalysisError
+from ..utils.errors import (
+    AnalysisError,
+    ValidationError,
+    APIError,
+    RateLimitError,
+    QuotaExhaustedError,
+    WebScrapingError,
+    TimeoutError as AgentTimeoutError
+)
 from ..utils.validators import validate_topic
 
 logger = get_logger(__name__)
@@ -63,23 +71,23 @@ class IndiaPoliticsAgent:
 
         try:
             # Step 1: Web search
-            print(f"\n{'='*70}")
-            print("STEP 1: Fetching Latest Information from Web")
-            print(f"{'='*70}\n")
+            logger.info("="*70)
+            logger.info("STEP 1: Fetching Latest Information from Web")
+            logger.info("="*70)
 
             search_results = self.web_search.search(topic)
 
             # Step 2: Extract facts
-            print(f"\n{'='*70}")
-            print("STEP 2: Extracting Key Facts and Data Points")
-            print(f"{'='*70}\n")
+            logger.info("="*70)
+            logger.info("STEP 2: Extracting Key Facts and Data Points")
+            logger.info("="*70)
 
             facts = self._extract_facts(topic, search_results)
 
             # Step 3: Generate analysis
-            print(f"\n{'='*70}")
-            print("STEP 3: Creating Comprehensive Video Analysis")
-            print(f"{'='*70}\n")
+            logger.info("="*70)
+            logger.info("STEP 3: Creating Comprehensive Video Analysis")
+            logger.info("="*70)
 
             analysis_text = self._generate_analysis(topic, facts)
 
@@ -102,11 +110,68 @@ class IndiaPoliticsAgent:
 
             return result
 
-        except Exception as e:
-            logger.error(f"Analysis failed: {e}", topic=topic)
+        except ValidationError as e:
+            logger.error(f"Input validation failed: {e}", topic=topic)
             raise AnalysisError(
-                f"Failed to analyze topic: {e}",
-                topic=topic
+                f"Invalid input: {e}",
+                topic=topic,
+                stage="validation"
+            )
+
+        except QuotaExhaustedError as e:
+            logger.error(f"API quota exhausted: {e}", topic=topic)
+            raise AnalysisError(
+                "API quota exceeded. Please try again later or check your API key.",
+                topic=topic,
+                stage="api_call"
+            )
+
+        except RateLimitError as e:
+            logger.error(f"Rate limit exceeded: {e}", topic=topic)
+            raise AnalysisError(
+                "Rate limit exceeded. Please wait a moment and try again.",
+                topic=topic,
+                stage="api_call"
+            )
+
+        except AgentTimeoutError as e:
+            logger.error(f"Operation timed out: {e}", topic=topic)
+            raise AnalysisError(
+                f"Operation timed out: {e}. Please try again.",
+                topic=topic,
+                stage="timeout"
+            )
+
+        except WebScrapingError as e:
+            logger.error(f"Web scraping failed: {e}", topic=topic)
+            raise AnalysisError(
+                f"Failed to fetch web data: {e}. Some sources may be unavailable.",
+                topic=topic,
+                stage="web_search"
+            )
+
+        except APIError as e:
+            logger.error(f"API error: {e}", topic=topic)
+            raise AnalysisError(
+                f"API error: {e}. Please check your API key and try again.",
+                topic=topic,
+                stage="api_call"
+            )
+
+        except ConnectionError as e:
+            logger.error(f"Network connection error: {e}", topic=topic)
+            raise AnalysisError(
+                f"Network connection error: {e}. Please check your internet connection and try again.",
+                topic=topic,
+                stage="network"
+            )
+
+        except Exception as e:
+            logger.error(f"Unexpected error during analysis: {e}", topic=topic, exc_info=True)
+            raise AnalysisError(
+                f"Unexpected error: {e}",
+                topic=topic,
+                stage="unknown"
             )
 
     def _extract_facts(self, topic: str, search_results: dict) -> dict:
@@ -152,14 +217,14 @@ YOUR TASK: Extract and list:
 Be concise. Focus on facts, not opinions. Use ONLY information from the provided articles."""
 
         try:
-            print("⏳ Extracting facts... (30-40 seconds)\n")
+            logger.info("⏳ Extracting facts from search results...")
             extracted_text = self.gemini.generate(
                 prompt=extraction_prompt,
                 temperature=0.3,
                 max_output_tokens=2000
             )
 
-            print("✅ Facts extracted successfully\n")
+            logger.info("✅ Facts extracted successfully")
 
             return {
                 'extracted_facts': extracted_text,
@@ -339,14 +404,14 @@ indian politics, {topic}, elections 2025, political analysis, campaign strategy
 NOW CREATE THIS COMPLETE ANALYSIS FOR: {topic}"""
 
         try:
-            print("⏳ Generating analysis... (60-90 seconds)\n")
+            logger.info("⏳ Generating comprehensive analysis...")
             analysis = self.gemini.generate(
                 prompt=prompt,
                 temperature=0.75,
                 max_output_tokens=8000
             )
 
-            print("✅ Analysis generated successfully\n")
+            logger.info("✅ Analysis generated successfully")
             return analysis
 
         except Exception as e:
