@@ -3,7 +3,7 @@
 import sys
 import os
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any
 from datetime import datetime
 
 # Add project root to path to import the existing working module
@@ -32,7 +32,7 @@ class WebSearchService:
             self.searcher = WebSearcher()
             logger.info("WebSearchService initialized with WebSearcher")
 
-    def search(self, query: str) -> Dict:
+    def search(self, query: str) -> Dict[str, Any]:
         """
         Search for information about the query.
 

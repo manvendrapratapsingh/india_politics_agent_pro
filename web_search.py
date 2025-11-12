@@ -290,7 +290,9 @@ class WebSearcher:
 
             return ' '.join(content)[:2000]  # Limit to 2000 chars
 
-        except Exception:
+        except (requests.RequestException, requests.Timeout, ValueError) as e:
+            # Log specific network and parsing errors but return empty string
+            print(f"Warning: Failed to fetch article content from {url}: {e}")
             return ""
 
     def search_comprehensive(self, query: str) -> List[Dict]:

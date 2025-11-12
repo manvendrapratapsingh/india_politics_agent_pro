@@ -6,9 +6,9 @@ from .errors import ValidationError
 
 
 def validate_topic(topic: str) -> str:
-    """Validate and sanitize topic input."""
-    if not topic:
-        raise ValidationError("Topic cannot be empty", field="topic", value=topic)
+    """Validate and sanitize topic input using whitelist approach."""
+    if not topic or not isinstance(topic, str):
+        raise ValidationError("Topic must be a non-empty string", field="topic", value=topic)
 
     topic = topic.strip()
 
@@ -26,8 +26,15 @@ def validate_topic(topic: str) -> str:
             value=topic
         )
 
-    # Remove potentially harmful characters
-    topic = re.sub(r'[<>{}\\]', '', topic)
+    # Whitelist approach: only allow safe characters
+    # Allowed: letters (a-z, A-Z), numbers (0-9), spaces, hyphens, underscores, parentheses, commas, periods, apostrophes
+    if not re.match(r"^[a-zA-Z0-9\s\-_(),.\']+$", topic):
+        raise ValidationError(
+            "Topic contains invalid characters. "
+            "Allowed: a-z, A-Z, 0-9, spaces, hyphens, underscores, parentheses, commas, periods, apostrophes",
+            field="topic",
+            value=topic
+        )
 
     return topic
 
